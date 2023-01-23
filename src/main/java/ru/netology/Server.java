@@ -10,6 +10,9 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
+import static ru.netology.Request.GET;
+import static ru.netology.Request.POST;
+
 public class Server {
     private final ExecutorService executorService;
     private final ConcurrentHashMap<String, Map<String, Handler>> handlers;
@@ -74,14 +77,23 @@ public class Server {
         }
     }
     public void printRequest (Request request) {
-        System.out.println("Мето: " + request.getMethod());
-        System.out.println("Путь: " + request.getPath());
-        System.out.println("Заголовок" + request.getHeaders());
-        System.out.println("Параметры -- ключ = значение: ");
-        for (var param: request.getQueryParams()) {
-            System.out.println(param.getName() + "=" + param.getValue());
+        if (request.getMethod().equals(GET)) {
+            System.out.println("МЕТОД: " + request.getMethod());
+            System.out.println("ПУТЬ: " + request.getPath());
+            System.out.println("ЗАГОЛОВОК: " + request.getHeaders());
+            System.out.println("ПАРАМЕТРЫ {КЛЮЧ = ЗНАЧЕНИЕ}: ");
+            for (var param: request.getQueryParams()) {
+                System.out.println(param.getName() + "=" + param.getValue());
+            }
+        } else if (request.getMethod().equals(POST)) {
+            System.out.println("МЕТОД: " + request.getMethod());
+            System.out.println("ПУТЬ: " + request.getPath());
+            System.out.println("ЗАГОЛОВОК: " + request.getHeaders());
+            System.out.println("ПАРАМЕТРЫ {КЛЮЧ = ЗНАЧЕНИЕ}: ");
+            System.out.println(request.getBody());
         }
-        System.out.println(request.getBody());
+
+//        System.out.println(request.getBody());
 //        System.out.println(request.getQueryParam("АБОБА").getName());
 //        System.out.println(request.getQueryParam("testDebugInfo").getValue());
     }

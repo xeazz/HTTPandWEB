@@ -24,6 +24,14 @@ public class Request {
 
 
     public Request(String method, String path, List<String> headers,
+                   List<NameValuePair> queryParams, String body) {
+        this.method = method;
+        this.path = path;
+        this.headers = headers;
+        this.queryParams = queryParams;
+        this.body = body;
+    }
+    public Request(String method, String path, List<String> headers,
                    List<NameValuePair> queryParams) {
         this.method = method;
         this.path = path;
@@ -112,9 +120,12 @@ public class Request {
                 final var length = Integer.parseInt(contentLength.get());
                 final var bodyBytes = in.readNBytes(length);
                 final var body = new String(bodyBytes);
+                return new Request(method, path, headers, params, body);
+            } else {
+                return new Request(method, path, headers, params);
             }
         }
-        return new Request(method, path, headers, params);
+        return null;
     }
 
 

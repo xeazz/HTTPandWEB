@@ -16,6 +16,7 @@ public class Request {
 
     public static final String GET = "GET";
     public static final String POST = "POST";
+    private String body;
     private final String method;
     private final String path;
     private final List<String> headers;
@@ -28,6 +29,10 @@ public class Request {
         this.path = path;
         this.headers = headers;
         this.queryParams = queryParams;
+    }
+
+    public String getBody() {
+        return body;
     }
 
     public String getMethod() {
@@ -98,6 +103,7 @@ public class Request {
 
         final var headersBytes = in.readNBytes(headersEnd - headersStart);
         final var headers = Arrays.asList(new String(headersBytes).split("\r\n"));
+        List<NameValuePair> params = URLEncodedUtils.parse(new URI(path), StandardCharsets.UTF_8);
         if (!method.equals(GET)) {
             in.skip(headersDelimiter.length);
             // вычитываем Content-Length, чтобы прочитать body
@@ -108,7 +114,6 @@ public class Request {
                 final var body = new String(bodyBytes);
             }
         }
-        List<NameValuePair> params = URLEncodedUtils.parse(new URI(path), StandardCharsets.UTF_8);
         return new Request(method, path, headers, params);
     }
 
@@ -134,6 +139,21 @@ public class Request {
         }
         return -1;
     }
+//    public NameValuePair getQueryParam(String name) {
+//        return getQueryParams().stream()
+//                .filter(param -> param.getName().equalsIgnoreCase(name))
+//                .findFirst().orElse(new NameValuePair() {
+//                    @Override
+//                    public String getName() {
+//                        return name;
+//                    }
+//
+//                    @Override
+//                    public String getValue() {
+//                        return "";
+//                    }
+//                });
+//    }
 }
 
 

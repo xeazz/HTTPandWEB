@@ -81,6 +81,9 @@ public class Server {
         for (var param: request.getQueryParams()) {
             System.out.println(param.getName() + "=" + param.getValue());
         }
+        System.out.println(request.getBody());
+//        System.out.println(request.getQueryParam("АБОБА").getName());
+//        System.out.println(request.getQueryParam("testDebugInfo").getValue());
     }
 
 

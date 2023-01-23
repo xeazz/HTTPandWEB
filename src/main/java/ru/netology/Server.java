@@ -56,7 +56,7 @@ public class Server {
                 final var path = parts[1];
                 Request request = createRequest(method, path);
                 if (request == null || !handlers.containsKey(request.getMethod())) {
-                    responseError(out, "404", "NOT FOUND");
+                    responseError(out);
                     break;
                 }
                 Map<String, Handler> map = handlers.get(request.getMethod());
@@ -65,10 +65,10 @@ public class Server {
                     Handler handler = map.get(requestPath);
                     handler.handle(request, out);
                 } else {
-                    if (!validPaths.contains(path)) {
-                        responseError(out, "404", "NOT FOUND");
-                    } else {
+                    if (map.containsKey(path)) {
                         defaultLinkConnection(out, path);
+                    } else {
+                        responseError(out);
                     }
                 }
             }
@@ -81,10 +81,10 @@ public class Server {
         return (method != null && !method.isBlank()) ? new Request(method, path) : null;
     }
 
-    public void responseError(BufferedOutputStream out, String responseNumberError, String responseStatusError) {
+    public void responseError(BufferedOutputStream out) {
         try {
             out.write((
-                    "HTTP/1.1 " + responseNumberError + " " + responseStatusError + "\r\n" +
+                    "HTTP/1.1 404 Not Found\r\n" +
                             "Content-Length: 0\r\n" +
                             "Connection: close\r\n" +
                             "\r\n"
@@ -132,12 +132,12 @@ public class Server {
             e.printStackTrace();
         }
     }
-
     public void addHandler(String method, String path, Handler handler) {
         if (handlers.containsKey(method)) {
             handlers.get(method).put(path, handler);
         } else {
             handlers.put(method, new HashMap<>());
+            handlers.get(method).put(path, handler);
         }
     }
 }

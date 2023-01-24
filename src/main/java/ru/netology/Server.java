@@ -56,7 +56,7 @@ public class Server {
             throw new RuntimeException(e);
         }
     }
-
+    
     public void responseError(BufferedOutputStream out) {
         try {
             out.write((

@@ -1,16 +1,10 @@
 package ru.netology;
 
-import java.io.BufferedOutputStream;
-import java.io.BufferedReader;
-import java.io.IOException;
-import java.io.InputStreamReader;
+import java.io.*;
 import java.net.ServerSocket;
 import java.net.Socket;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.time.LocalDateTime;
+import java.net.URISyntaxException;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
@@ -19,7 +13,6 @@ import java.util.concurrent.Executors;
 public class Server {
     private final ExecutorService executorService;
     private final ConcurrentHashMap<String, Map<String, Handler>> handlers;
-    private final List<String> validPaths = List.of("/index.html", "/spring.svg", "/spring.png", "/resources.html", "/styles.css", "/app.js", "/links.html", "/forms.html", "/classic.html", "/events.html", "/events.js");
 
     public Server(int poolSize) {
         this.executorService = Executors.newFixedThreadPool(poolSize);
@@ -39,52 +32,35 @@ public class Server {
     }
 
     public void connection(Socket socket) {
-        try (BufferedReader in = new BufferedReader(new InputStreamReader(socket.getInputStream()));
-             BufferedOutputStream out = new BufferedOutputStream(socket.getOutputStream())) {
-            while (true) {
-                final var requestLine = in.readLine();
-                if (requestLine == null || requestLine.trim().length() == 0) {
-                    break;
-                }
-                final var parts = requestLine.split(" ");
-
-                if (parts.length != 3) {
-                    socket.close();
-                    break;
-                }
-                String method = parts[0];
-                final var path = parts[1];
-                Request request = createRequest(method, path);
-                if (request == null || !handlers.containsKey(request.getMethod())) {
-                    responseError(out);
-                    break;
-                }
+        try (var in = new BufferedInputStream(socket.getInputStream());
+             var out = new BufferedOutputStream(socket.getOutputStream())) {
+            Request request = Request.createRequest(in);
+            if (request == null || !handlers.containsKey(request.getMethod())) {
+                responseError(out);
+            } else {
                 Map<String, Handler> map = handlers.get(request.getMethod());
-                String requestPath = request.getPath();
+                String requestPath = request.getFullPath();
                 if (map.containsKey(requestPath)) {
                     Handler handler = map.get(requestPath);
                     handler.handle(request, out);
+                    printRequest(request);
                 } else {
-                    if (map.containsKey(path)) {
-                        defaultLinkConnection(out, path);
+                    if (map.containsKey(requestPath)) {
+                        responseGood(out);
                     } else {
                         responseError(out);
                     }
                 }
             }
-        } catch (IOException e) {
-            e.printStackTrace();
+        } catch (IOException | URISyntaxException e) {
+            throw new RuntimeException(e);
         }
     }
-
-    private Request createRequest(String method, String path) {
-        return (method != null && !method.isBlank()) ? new Request(method, path) : null;
-    }
-
+    
     public void responseError(BufferedOutputStream out) {
         try {
             out.write((
-                    "HTTP/1.1 404 Not Found\r\n" +
+                    "HTTP/1.1 400 Bad Request\r\n" +
                             "Content-Length: 0\r\n" +
                             "Connection: close\r\n" +
                             "\r\n"
@@ -95,43 +71,43 @@ public class Server {
         }
     }
 
-    public void defaultLinkConnection(BufferedOutputStream out, String path) {
+    public void responseGood(BufferedOutputStream out) {
         try {
-            final var filePath = Path.of(".", "public", path);
-            final var mimeType = Files.probeContentType(filePath);
-
-            // special case for classic
-            if (path.equals("/classic.html")) {
-                final var template = Files.readString(filePath);
-                final var content = template.replace(
-                        "{time}",
-                        LocalDateTime.now().toString()
-                ).getBytes();
-                out.write((
-                        "HTTP/1.1 200 OK\r\n" +
-                                "Content-Type: " + mimeType + "\r\n" +
-                                "Content-Length: " + content.length + "\r\n" +
-                                "Connection: close\r\n" +
-                                "\r\n"
-                ).getBytes());
-                out.write(content);
-                out.flush();
-            }
-
-            final var length = Files.size(filePath);
             out.write((
                     "HTTP/1.1 200 OK\r\n" +
-                            "Content-Type: " + mimeType + "\r\n" +
-                            "Content-Length: " + length + "\r\n" +
+                            "Content-Length: 0\r\n" +
                             "Connection: close\r\n" +
                             "\r\n"
             ).getBytes());
-            Files.copy(filePath, out);
             out.flush();
         } catch (IOException e) {
             e.printStackTrace();
         }
     }
+
+    public void printRequest(Request request) {
+        System.out.println("METHOD: " + request.getMethod());
+        System.out.println("PATH: " + request.getFullPath());
+        System.out.println("HEADERS: " + request.getHeaders());
+        System.out.println("QUERY PARAMETERS: ");
+        if (request.getQueryParams() != null) {
+            for (var param : request.getQueryParams()) {
+                System.out.println("\t" + param.getName() + "=" + param.getValue());
+            }
+        } else {
+            System.out.println("\tПараметры отсутствуют!");
+        }
+
+        System.out.println("BODY: ");
+        if (request.getPostParams() != null) {
+            for (var body : request.getPostParams()) {
+                System.out.println("\t" + body.getName() + ": " + body.getValue());
+            }
+        } else {
+            System.out.println("\tТело запроса отсутствует!");
+        }
+    }
+
     public void addHandler(String method, String path, Handler handler) {
         if (handlers.containsKey(method)) {
             handlers.get(method).put(path, handler);
@@ -141,3 +117,5 @@ public class Server {
         }
     }
 }
+
+

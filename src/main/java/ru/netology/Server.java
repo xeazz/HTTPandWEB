@@ -38,6 +38,7 @@ public class Server {
             if (request == null || !handlers.containsKey(request.getMethod())) {
                 responseError(out);
             } else {
+        
                 Map<String, Handler> map = handlers.get(request.getMethod());
                 String requestPath = request.getFullPath();
                 if (map.containsKey(requestPath)) {
@@ -56,7 +57,6 @@ public class Server {
             throw new RuntimeException(e);
         }
     }
-
     public void responseError(BufferedOutputStream out) {
         try {
             out.write((
@@ -107,7 +107,6 @@ public class Server {
             System.out.println("\tТело запроса отсутствует!");
         }
     }
-
     public void addHandler(String method, String path, Handler handler) {
         if (handlers.containsKey(method)) {
             handlers.get(method).put(path, handler);

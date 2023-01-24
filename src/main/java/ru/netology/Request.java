@@ -45,11 +45,9 @@ public class Request {
     public List<NameValuePair> getQueryParams() {
         return queryParam;
     }
-
     public List<NameValuePair> getPostParams() {
         return body;
     }
-
     public static Request createRequest(BufferedInputStream in) throws IOException, URISyntaxException {
         final var allowedMethods = List.of(GET, POST);
         // лимит на request line + заголовки
@@ -97,17 +95,43 @@ public class Request {
 
         final var headersBytes = in.readNBytes(headersEnd - headersStart);
         final var headers = Arrays.asList(new String(headersBytes).split("\r\n"));
-
-        if (fullPath.contains("?")) {
-            var query = fullPath.substring(fullPath.indexOf("?") + 1);
-            var queryParam = URLEncodedUtils.parse(query, StandardCharsets.UTF_8, '&');
-            return new Request(method, fullPath, headers, queryParam, null);
+        if (!method.equals(GET)) {
+            in.skip(headersDelimiter.length);
+            // вычитываем Content-Length, чтобы прочитать body
+            final var contentLength = extractHeader(headers);
+            if (contentLength.isPresent()) {
+                final var length = Integer.parseInt(contentLength.get());
+                final var bodyBytes = in.readNBytes(length);
+                final var body = new String(bodyBytes);
+                var requestBody = URLEncodedUtils.parse(body, StandardCharsets.UTF_8, '&');
+                if (fullPath.contains("?")) {
+                    var query = fullPath.substring(fullPath.indexOf("?")+ 1);
+                    var queryParam = URLEncodedUtils.parse(query, StandardCharsets.UTF_8, '&');
+                    return new Request(method, fullPath, headers, queryParam, requestBody);
+                } else {
+                    return new Request(method, fullPath, headers, null, requestBody);
+                }
+            }
         } else {
-            return new Request(method, fullPath, headers, null, null);
+            if (fullPath.contains("?")) {
+                var query = fullPath.substring(fullPath.indexOf("?") + 1);
+                var queryParam = URLEncodedUtils.parse(query, StandardCharsets.UTF_8, '&');
+                return new Request(method, fullPath, headers, queryParam, null);
+            } else {
+                return new Request(method, fullPath, headers, null, null);
+            }
         }
-
+        return null;
     }
-    
+
+    private static Optional<String> extractHeader(List<String> headers) {
+        return headers.stream()
+                .filter(o -> o.startsWith("Content-Length"))
+                .map(o -> o.substring(o.indexOf(" ")))
+                .map(String::trim)
+                .findFirst();
+    }
+
     // from google guava with modifications
     private static int indexOf(byte[] array, byte[] target, int start, int max) {
         outer:
